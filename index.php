@@ -6,7 +6,7 @@ if (!isset($_SESSION['username'])) {
     header('location: login.php');
 }
 // Connect to database
-$db = mysqli_connect('localhost', 'phpmyadmin', 'Sagar@992101', 'jfsa');
+$db = mysqli_connect('localhost', 'root', '', 'jfsa');
 
 // Retrieve user details from database
 $username = $_SESSION['username'];
@@ -30,6 +30,30 @@ if ($result->num_rows > 0) {
 }
 
 
+
+if ($db->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+
+$sql = "SELECT revenue_data.Gaon, revenue_data.Gut_number, revenue_data.Taluka, revenue_data.Nameofoccupant, revenue_data.Ekunkhetra 
+ FROM revenue_data" ; 
+
+
+$result = $db->query($sql);
+
+$data = array();
+
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+}
+
+
+
+// echo json_encode($data);
+
 ?>
 
 
@@ -42,8 +66,8 @@ if ($result->num_rows > 0) {
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TCPL</title>
-    <link rel="icon" type="image/x-icon" href="images/logo1.png">
+    <title>GeoPulse</title>
+<!--    <link rel="icon" type="image/x-icon" href="images/logo1.png"> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.0/html2canvas.min.js"></script>
@@ -133,6 +157,9 @@ if ($result->num_rows > 0) {
     <!-- json -->
 
     <script>
+
+
+
     $(function() {
         var availableTags = ['Pimpalgaon Tarf Khed,Khed', 'Rohakal,Khed', 'Kanersar,Khed', 'Chinchoshi,Khed',
             'Sabalewadi,Khed', 'Sidhegavhan,Khed', 'Torne Bk,Khed', 'Hedruj,Khed', 'Davadi,Khed',
@@ -311,10 +338,46 @@ if ($result->num_rows > 0) {
             'Yawat,Daund', 'Chandkhed,Mawal', 'Darumbare,Mawal', 'Vadgaon,Mawal', 'Golegaon,Khed',
             'Narhe,Haveli'
         ];
-        $(".search").autocomplete({
-            source: availableTags
-        });
+
+        var Nameofoccupants = <?php echo json_encode($data); ?>;
+
+                $(".search").autocomplete({
+                    source: function(request, response) {
+                        const marathiText = /^[\u0900-\u097F\s]*$/;
+                        var array = [request.term];
+
+                        if (marathiText.test(array[0])) {
+                            console.log(array[0], "matched");
+                            var filteredData = Nameofoccupants.filter(function (item) {
+                                // You need to adjust the condition based on your filtering criteria
+                                return item.Nameofoccupant.includes(array[0]);
+                            });
+                            var autocompleteData = filteredData.map(function(item) {
+                                    return {
+                                        label: item.Nameofoccupant + ', ' + item.Gaon + ', ' + item.Taluka + ', ' + item.Gut_number,
+                                        value: item.Nameofoccupant + ',' + item.Gaon + ',' + item.Taluka + ',' + item.Gut_number
+                                    };
+                                });
+
+                                console.log(autocompleteData, "autocompleteData");
+                                response(autocompleteData);
+                        } else {
+                            console.log(array[0], "not matched");
+                            // English code
+                            response(availableTags);
+                        }
+                    }
+                });
+
+
+
+
     });
+
+    
+                        
+                    
+
     </script>
 
 
@@ -347,7 +410,6 @@ if ($result->num_rows > 0) {
         color: greenyellow;
 
     }
-
    
     #locationTable a {
         color: whitesmoke;
@@ -561,7 +623,8 @@ if ($result->num_rows > 0) {
 
 
     var wms_layer1 = L.tileLayer.wms(
-        "https://portal.tcplgeo.com/geoservers/DP/wms", {
+
+        "https://portal.geopulsea.com/geoserver/zone/wms", {
             // layers: layerName,
             format: "image/png",
             transparent: true,
@@ -577,8 +640,8 @@ if ($result->num_rows > 0) {
 
 
     var wms_layer12 = L.tileLayer.wms(
-        "https://portal.tcplgeo.com/geoservers/DP/wms", {
-            layers: "DP:Revenue",
+        "https://portal.geopulsea.com/geoserver/zone/wms", {
+            layers: "zone:Revenue",
             format: "image/png",
             transparent: true,
             tiled: true,
@@ -591,27 +654,14 @@ if ($result->num_rows > 0) {
 
     
 
-    // var wms_layer13 = L.tileLayer.wms(
-    //     "https://portal.tcplgeo.com/geoservers/DP/wms", {
-    //         layers: "DP:layout",
-    //         format: "image/png",
-    //         transparent: true,
-    //         tiled: true,
-    //         version: "1.1.0",
-    //         attribution: "layout",
-    //         opacity: 1,
-
-    //     }
-    // );
-
 
     var userRole = "<?php echo $user['role']; ?>";
     // var userRole = "lohar";
 
-    var shantaramList = ['DP:DP', 'DP:Revenue', 'DP:RP', 'DP:Change_overlay1', 'DP:Change_overlay', 'DP:Modification'];
-    var adminList = ['DP:DP', 'DP:Revenue', 'DP:RP', 'DP:Modification','DP:Layout'];
-    var user2 = ['DP:DP', 'DP:Revenue' ];
-    var finalDraftList = ['DP:DP', 'DP:Revenue', 'DP:RP', '	DP:Change_overlay1'];
+    var shantaramList = ['zone:DP', 'zone:Revenue', 'zone:RP', 'zone:Change_overlay1', 'zone:Change_overlay', 'zone:Modification'];
+    var adminList = ['zone:DP', 'zone:Revenue', 'zone:RP' ];
+    var user2 = ['zone:DP', 'zone:Revenue' ];
+    var finalDraftList = ['zone:DP', 'zone:Revenue', 'zone:RP', 'zone:Change_overlay1'];
     // var finalDraftList = ['DP:Revenue', 'DP:VILLAGE_BOUNDARY', 'DP:Taluka_Boundary'];
     var concatenatedList = [];
     var wmsLayersNames = ["DP", "Revenue", "RP", "Change_overlay1"];
@@ -624,7 +674,7 @@ if ($result->num_rows > 0) {
     }
     if (userRole === "admin") {
         finalDraftList = adminList;
-        wmsLayersNames = ["DP", "Revenue", "RP", "Modification","Layout"];
+        wmsLayersNames = ["DP", "Revenue", "RP"];
     }
     if (userRole === "user2") {
         finalDraftList = user2;
@@ -643,7 +693,7 @@ if ($result->num_rows > 0) {
             var concatenatedString = finalDraftList[i];
             return createWMSLayer(concatenatedString)
         }
-        if (finalDraftList[i] === "DP:DP") {
+        if (finalDraftList[i] === "zone:DP") {
             geoserverLayer.addTo(map);
         }
         wmsLayerss[wmsLayersNames[i]] = geoserverLayer;
@@ -651,7 +701,7 @@ if ($result->num_rows > 0) {
     }
 
     function createWMSLayer(layerName) {
-        return L.tileLayer.wms('https://portal.tcplgeo.com/geoservers/DP/wms', {
+        return L.tileLayer.wms('https://portal.geopulsea.com/geoserver/zone/wms', {
             layers: layerName,
             format: 'image/png',
             transparent: true,
@@ -667,18 +717,13 @@ if ($result->num_rows > 0) {
 
 
 
-
-
-
-
-
     map.on("contextmenu", (e) => {
         let size = map.getSize();
         let bbox = map.getBounds().toBBoxString();
-        let layer = 'DP:Modification';
-        let style = 'DP:Modification';
+        let layer = 'zone:Revenue';
+        let style = 'zone:Revenue';
         let urrr =
-            `https://portal.tcplgeo.com/geoservers/DP/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&FORMAT=image%2Fpng&TRANSPARENT=true&QUERY_LAYERS=${layer}&STYLES&LAYERS=${layer}&exceptions=application%2Fvnd.ogc.se_inimage&INFO_FORMAT=application/json&FEATURE_COUNT=50&X=${Math.round(e.containerPoint.x)}&Y=${Math.round(e.containerPoint.y)}&SRS=EPSG%3A4326&WIDTH=${size.x}&HEIGHT=${size.y}&BBOX=${bbox}`
+            `https://portal.geopulsea.com/geoserver/zone/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&FORMAT=image%2Fpng&TRANSPARENT=true&QUERY_LAYERS=${layer}&STYLES&LAYERS=${layer}&exceptions=application%2Fvnd.ogc.se_inimage&INFO_FORMAT=application/json&FEATURE_COUNT=50&X=${Math.round(e.containerPoint.x)}&Y=${Math.round(e.containerPoint.y)}&SRS=EPSG%3A4326&WIDTH=${size.x}&HEIGHT=${size.y}&BBOX=${bbox}`
 
         // you can use this url for further processing such as fetching data from server or showing it on the map
 
@@ -689,17 +734,41 @@ if ($result->num_rows > 0) {
                 .then((html) => {
 
                     var htmldata = html.features[0].properties
+                    var ownerName = <?php echo json_encode($data); ?>;
+                    let finalOwnerName="" 
                     let keys = Object.keys(htmldata);
                     let values = Object.values(htmldata);
+                    let OwnerArea = "";
+                    // console.log(ownerName, values, keys )
+                    for(let i=0;i<ownerName.length;i++){
+                        
+                        if( parseInt(values[1]) == parseInt(ownerName[i].Gut_number) &&
+                            (values[4]) == (ownerName[i].Gaon) &&
+                           (values[2]) == (ownerName[i].Taluka)
+                             ){            
+                            finalOwnerName += ownerName[i].Nameofoccupant +'<br>'
+                            OwnerArea = ownerName[i].Ekunkhetra 
+                        }  
+
+                        else{
+                            console.log("hehehehe")
+                        }          
+                    }
+
+                    console.log(finalOwnerName,"finalOwnerName")
+
                     let txtk1 = "";
                     var xx = 0
                     for (let gb in keys) {
                         txtk1 += "<tr><td>" + keys[xx] + "</td><td>" + values[xx] + "</td></tr>";
                         xx += 1
                     };
+                    console.log(finalOwnerName,"?????????????????????????")
                     let detaildata1 =
                         "<div style='max-height: 350px;  overflow-y: scroll;'><table  style='width:70%;' class='popup-table' >" +
-                        txtk1 + "<tr><td>Co-Ordinates</td><td>" + e.latlng +
+                        txtk1 + "<tr><td>OwnerName</td><td>" + finalOwnerName +
+                        "</td></tr><tr><td>7/12 Area </td><td>" + OwnerArea +
+                        "</td></tr><tr><td>Co-Ordinates</td><td>" + e.latlng +
                         "</td></tr></table></div>"
 
                     L.popup()
@@ -707,27 +776,152 @@ if ($result->num_rows > 0) {
                         .setContent(detaildata1)
                         .openOn(map);
                 })
+
         }
+
     });
 
 
 
     map.on('dblclick', function(e) {
-        var lat = e.latlng.lat.toFixed(15);
-        var lng = e.latlng.lng.toFixed(15);
-        // console.log(lat, lng)
-        var popupContent = '<a href="https://earth.google.com/web/search/' + lat + "," + lng +
-            '" target="_blank">Open in Google Earth</a><br>' +
-    'Latitude: ' + lat + ' <br> ' +
-    'Longitude: ' + lng + '<hr>' +
-     + lat + ' , ' 
-     + lng;
-        L.popup()
-            .setLatLng(e.latlng)
-            .setContent(popupContent)
-            .openOn(map);
-    });
+ 
+        let size = map.getSize();
+        let bbox = map.getBounds().toBBoxString();
+        let layer = 'zone:Revenue';
+        let style = 'zone:Revenue';
+        let urrr =
+            `https://portal.geopulsea.com/geoserver/zone/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&FORMAT=image%2Fpng&TRANSPARENT=true&QUERY_LAYERS=${layer}&STYLES&LAYERS=${layer}&exceptions=application%2Fvnd.ogc.se_inimage&INFO_FORMAT=application/json&FEATURE_COUNT=50&X=${Math.round(e.containerPoint.x)}&Y=${Math.round(e.containerPoint.y)}&SRS=EPSG%3A4326&WIDTH=${size.x}&HEIGHT=${size.y}&BBOX=${bbox}`
+ 
+        // you can use this url for further processing such as fetching data from server or showing it on the map
+ 
+        if (urrr) {
+            fetch(urrr)
+ 
+                .then((response) => response.json())
+                .then((html) => {
+              
+                    var htmldata = html.features[0].properties
+                    // console.log(htmldata,"_____________________")
+                    var coordinatesArray =  html.features[0].geometry.coordinates[0][0]
+                    var coordinatesList = coordinatesArray.join(', ');
+                    // console.log(coordinatesList,"******************************", coordinatesArray)
+                    var  geometryType = html.features[0].geometry.type
+ 
+ 
+                    var coordinatesWithAltitude = coordinatesArray.map(function(coord) {
+                        return [coord[0].toFixed(15), coord[1].toFixed(15)  , 0];
+                                });
+ 
+                        // console.log(coordinatesWithAltitude);
+ 
+ 
+ 
+                    function generateKML(geometryType, coordinatesArray) {
+ 
+                        var kml =`<?xml version="1.0" encoding="UTF-8"?>
+                                    <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+                                    <Document>
+                                        <name>UPolygon.kml</name>
+                                        <StyleMap id="m_ylw-pushpin">
+                                            <Pair>
+                                                <key>normal</key>
+                                                <styleUrl>#s_ylw-pushpin</styleUrl>
+                                            </Pair>
+                                            <Pair>
+                                                <key>highlight</key>
+                                                <styleUrl>#s_ylw-pushpin_hl</styleUrl>
+                                            </Pair>
+                                        </StyleMap>
+                                        <Style id="s_ylw-pushpin">
+                                            <IconStyle>
+                                                <scale>1.1</scale>
+                                                <Icon>
+                                                    <href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+                                                </Icon>
+                                                <hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+                                            </IconStyle>
+                                            <LineStyle>
+                                                <color>ff00ff00</color>
+                                                <width>5</width>
+                                            </LineStyle>
+                                            <PolyStyle>
+                                                <color>80ffffff</color>
+                                            </PolyStyle>
+                                        </Style>
+                                        <Style id="s_ylw-pushpin_hl">
+                                            <IconStyle>
+                                                <scale>1.3</scale>
+                                                <Icon>
+                                                    <href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+                                                </Icon>
+                                                <hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+                                            </IconStyle>
+                                            <LineStyle>
+                                                <color>ff00ff00</color>
+                                                <width>5</width>
+                                            </LineStyle>
+                                            <PolyStyle>
+                                                <color>80ffffff</color>
+                                            </PolyStyle>
+                                        </Style>
+                                        <Placemark>
+                                            <name>Untitled Polygon</name>
+                                            <styleUrl>#m_ylw-pushpin</styleUrl>
+                                            <Polygon>
+                                                <tessellate>1</tessellate>
+                                                <outerBoundaryIs>
+                                                    <LinearRing>
+                                                        <coordinates>
+                                                        ${coordinatesArray.join(' ')}
+                                                        </coordinates>
+                                                        </LinearRing>
+                                                    </outerBoundaryIs>
+                                                </Polygon>
+                                            </Placemark>
+                                        </Document>
+                                        </kml>`;
+                        return kml;
+                    }
+                    var kmlContent = generateKML(geometryType, coordinatesWithAltitude);
+ 
+                    // console.log(kmlContent);
+ 
+                  
+            var ssDownload = document.createElement('a');
+            ssDownload.href = 'data:application/vnd.google-earth.kml+xml;charset=utf-8,' + encodeURIComponent(kmlContent);
+            ssDownload.download = 'polygon.kml';
+            ssDownload.textContent = 'Download KML';
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            var ssOpenInGoogleEarth = document.createElement('a');
+            ssOpenInGoogleEarth.href = 'https://earth.google.com/web/search/' + lat + "," + lng ;
+            ssOpenInGoogleEarth.target = '_blank';
+            ssOpenInGoogleEarth.textContent = 'Open in Google Earth';
+            var ssOpenInGoogleMap = document.createElement('a');
+            ssOpenInGoogleMap.href = "https://www.google.com/maps?q=" +  lat + "," + lng;
+            ssOpenInGoogleMap.target = '_blank';
+            ssOpenInGoogleMap.textContent = 'Open in Google Map';
 
+            // Create a div element to hold the links
+            var container = L.DomUtil.create('div');
+            container.appendChild(ssDownload);
+            container.appendChild(document.createElement('br')); // Add a line break between the links
+            container.appendChild(ssOpenInGoogleEarth);
+            container.appendChild(document.createElement('br')); // Add a line break between the links
+            container.appendChild(ssOpenInGoogleMap);
+
+            // Create a Leaflet popup and set its content to the container
+            var popup = L.popup()
+            .setLatLng(e.latlng)
+            .setContent(container)
+            .openOn(map);
+                });
+            }
+     
+    });
+ 
+ 
+           
     // var control = new L.control.layers(baseLayers, WMSlayers).addTo(map);
 
 
@@ -859,7 +1053,7 @@ if ($result->num_rows > 0) {
     north.addTo(map);
 
     uri =
-        "https://portal.tcplgeo.com/geoservers/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=40&HEIGHT=20&LAYER=DP:DP", {
+        "https://portal.geopulsea.com/geoserver/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=40&HEIGHT=20&LAYER=zone:DP", {
             // namedToggle: false,
 
         };
@@ -910,36 +1104,75 @@ if ($result->num_rows > 0) {
 
     // *****************************************************************Search Button**********************************************************************
     function SearchMe() {
-        var array = $('.search').val().split(",");
+    var array = $('.search').val().split(",");
 
-        if (array.length == 1) {
+    const marathiText = /^[\u0900-\u097F\s]*$/;
+
+    console.log("Array content:", array);
+
+    if (marathiText.test(array[0])) {
+        console.log(array[0], "matched");
+        // Rest of your Marathi code
+    } else {
+        console.log(array[0], "not matched");
+        // Rest of your English code
+    }
+
+
+      
+        // const marathiText = /^[\u0900-\u097F\s]*/;
+        // prompt(array,"array")
+        if (marathiText.test(array[0])) {
+// console.log(array[0],"matched")
+            // =============================added for name vise seaech ==========================
+            var guts = array.slice(3, array.length).join(",")
+            console.log(guts,"guts",marathiText.test(array[0]))
+            var sql_filter1 = "Village_Name_Revenue Like '" + array[1] + "'" + "AND Gut_Number IN (" + guts + ")" +
+                "AND Taluka Like '" + array[2] + "'"
+
+                console.log(sql_filter1,"guts")    
+            fitbou(sql_filter1)
+            wms_layer12.setParams({
+                cql_filter: sql_filter1,
+                styles: 'highlight',
+            });
+            wms_layer12.addTo(map).bringToFront();
+        
+                console.log("The text is in Marathi.");
+                } 
+        else{
+            // console.log(array[0],"not matched")
+            // =============================added for name vise seaech ==========================
+     if (array.length == 1) {
             var sql_filter1 = "Gut_Number Like '" + array[0] + "'"
             fitbou(sql_filter1)
             wms_layer12.setParams({
                 cql_filter: sql_filter1,
                 styles: 'highlight',
             });
-            wms_layer12.addTo(map);
+            wms_layer12.addTo(map).bringToFront();
         } else if (array.length == 2) {
-            var sql_filter1 = "Village__1 Like '" + array[0] + "'" + "AND Taluka Like '" + array[1] + "'"
+            var sql_filter1 = "Village_Name_Revenue Like '" + array[0] + "'" + "AND Taluka Like '" + array[1] + "'"
             fitbou(sql_filter1)
             wms_layer12.setParams({
                 cql_filter: sql_filter1,
                 styles: 'highlight',
             });
-            wms_layer12.addTo(map);
+            wms_layer12.addTo(map).bringToFront();
         } else if (array.length >= 3) {
             var guts = array.slice(2, array.length).join(", ")
-            var sql_filter1 = "Village__1 Like '" + array[0] + "'" + "AND Gut_Number IN (" + guts + ")" +
+            var sql_filter1 = "Village_Name_Revenue Like '" + array[0] + "'" + "AND Gut_Number IN (" + guts + ")" +
                 "AND Taluka Like '" + array[1] + "'"
+                console.log(sql_filter1)
             fitbou(sql_filter1)
             wms_layer12.setParams({
                 cql_filter: sql_filter1,
                 styles: 'highlight',
             });
-            wms_layer12.addTo(map);
+            wms_layer12.addTo(map).bringToFront();
         }
-
+        };
+    
     }
     // ------------------------------------------save search history-------
     function sendData() {
@@ -968,8 +1201,8 @@ if ($result->num_rows > 0) {
     // -------------------------------------------------
 
     function fitbou(filter) {
-        var layer = 'DP:Revenue'
-        var urlm = "https://portal.tcplgeo.com/geoservers/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" +
+        var layer = 'zone:Revenue'
+        var urlm = "https://portal.geopulsea.com/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" +
             layer + "&CQL_FILTER=" + filter + "&outputFormat=application/json";
         $.getJSON(urlm, function(data) {
             geojson = L.geoJson(data, {});
@@ -992,7 +1225,7 @@ if ($result->num_rows > 0) {
         $(document).ready(function() {
             $.ajax({
                 type: "GET",
-                url: "https://portal.tcplgeo.com/geoservers/DP/wfs?request=getCapabilities",
+                url: "https://portal.geopulsea.com/geoserver/zone/wfs?request=getCapabilities",
                 dataType: "xml",
                 success: function(xml) {
                     var select1 = $('#layer');
@@ -1019,7 +1252,7 @@ if ($result->num_rows > 0) {
                 $(document).ready(function() {
                     $.ajax({
                         type: "GET",
-                        url: "https://portal.tcplgeo.com/geoservers/wfs?service=WFS&request=DescribeFeatureType&version=1.1.0&typeName=" +
+                        url: "https://portal.geopulsea.com/geoserver/wfs?service=WFS&request=DescribeFeatureType&version=1.1.0&typeName=" +
                             value_layer1,
                         dataType: "xml",
 
@@ -1091,7 +1324,7 @@ if ($result->num_rows > 0) {
                 $(document).ready(function() {
                     $.ajax({
                         type: "GET",
-                        url: "https://portal.tcplgeo.com/geoservers/wfs?service=wfs&version=1.0.0&request=getfeature&typename=" +
+                        url: "https://portal.geopulsea.com/geoserver/wfs?service=wfs&version=1.0.0&request=getfeature&typename=" +
                             attributes + "&PROPERTYNAME=" + value_attribute,
                         dataType: "xml",
                         success: function(xml) {
@@ -1144,7 +1377,7 @@ if ($result->num_rows > 0) {
             fitbou(sql_filter1, layer)
 
             var wms_layerf = L.tileLayer.wms(
-                "https://portal.tcplgeo.com/geoservers/DP/wms", {
+                "https://portal.geopulsea.com/geoserver/zone/wms", {
                     layers: layer,
                     format: "image/png",
                     transparent: true,
@@ -1162,7 +1395,7 @@ if ($result->num_rows > 0) {
 
             function fitbou(filter, layer1) {
                 var urlm =
-                    "https://portal.tcplgeo.com/geoservers/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" +
+                    "https://portal.geopulsea.com/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" +
                     layer1 + "&CQL_FILTER=" + filter + "&outputFormat=application/json";
                 // console.log(urlm)
                 $.getJSON(urlm, function(data) {
